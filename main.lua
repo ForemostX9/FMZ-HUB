@@ -1,5 +1,6 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local lp, Ignore, MineBL = game.Players.LocalPlayer, {}, {}
+_G.AntiAFK = false -- ตัวแปรควบคุม Anti-AFK
 
 local Window = Rayfield:CreateWindow({
    Name = "🔥 FMZ HUB 🔥",
@@ -10,17 +11,53 @@ local Window = Rayfield:CreateWindow({
 
 local Main = Window:CreateTab("Main Farm", 4483362458)
 
+-- [ SECTION: SOUL FARM ]
 Main:CreateSection("👻 Soul Farm System")
-Main:CreateToggle({Name = "Auto Farm Souls", CurrentValue = false, Callback = function(v) _G.AutoFarm = v end})
+Main:CreateToggle({
+   Name = "Auto Farm Souls",
+   CurrentValue = false,
+   Callback = function(v) _G.AutoFarm = v end
+})
 
+-- [ SECTION: MINING ]
 Main:CreateSection("⛏️ Mining System")
-Main:CreateToggle({Name = "Auto Mine", CurrentValue = false, Callback = function(v) _G.AutoMine = v; if not v then MineBL = {} end end})
-Main:CreateButton({Name = "📍 TP to Mining Zone", Callback = function() 
+Main:CreateToggle({
+   Name = "Auto Mine",
+   CurrentValue = false,
+   Callback = function(v) _G.AutoMine = v; if not v then MineBL = {} end end
+})
+Main:CreateButton({
+   Name = "📍 TP to Mining Zone",
+   Callback = function() 
     if lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
         lp.Character.HumanoidRootPart.CFrame = CFrame.new(1225.1167, 229.666229, -1339.41138, 0, 0, -1, 0, 1, 0, 1, 0, 0) 
     end
-end})
+   end
+})
 
+-- [ SECTION: UTILITIES ]
+Main:CreateSection("⚙️ Utilities")
+Main:CreateToggle({
+   Name = "Anti-AFK (ป้องกันการหลุด)",
+   CurrentValue = false,
+   Callback = function(v)
+      _G.AntiAFK = v
+      if v then
+         Rayfield:Notify({Title="Anti-AFK", Content="เปิดระบบป้องกันการหลุดแล้ว", Duration=2})
+      end
+   end
+})
+
+-- [ LOGIC: ANTI-AFK ]
+lp.Idled:Connect(function()
+    if _G.AntiAFK then
+        local vu = game:GetService("VirtualUser")
+        vu:CaptureController()
+        vu:ClickButton2(Vector2.new())
+    end
+end)
+
+-- [ LOGIC: FARMING ]
 local function getChar() return lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") end
 local remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5):WaitForChild("Mining", 5)
 
@@ -66,4 +103,3 @@ task.spawn(function()
         end
     end
 end)
-
