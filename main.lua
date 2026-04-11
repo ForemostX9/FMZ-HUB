@@ -15,10 +15,34 @@ local Window = Rayfield:CreateWindow({
 -- ตัวแปรควบคุม
 _G.AutoFarm = false
 _G.AutoMine = false
-_G.AntiAFK = false
+_G.AutoBoss = false
+_G.AntiAFK = true -- บังคับค่าตัวแปรเป็น true ไว้ก่อน
+
 local lp = game.Players.LocalPlayer
 local IgnoreList = {} 
 local MineBlacklist = {} 
+
+-------------------------------------------------------
+-- [ SYSTEM: FORCE ANTI AFK ]
+-------------------------------------------------------
+-- ระบบป้องกันการถูกเตะออก (ทำงานเบื้องหลังทันที)
+task.spawn(function()
+    local vu = game:GetService("VirtualUser")
+    game:GetService("Players").LocalPlayer.Idled:Connect(function()
+        if _G.AntiAFK then
+            vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+            task.wait(1)
+            vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+        end
+    end)
+    -- ป้องกันแบบสำรอง (ขยับตัวเล็กน้อยทุก 2 นาที)
+    while task.wait(120) do
+        if _G.AntiAFK then
+            vu:CaptureController()
+            vu:ClickButton2(Vector2.new())
+        end
+    end
+end)
 
 -------------------------------------------------------
 -- [ SYSTEM: TOGGLE UI WITH KEYBOARD ]
@@ -34,15 +58,25 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -------------------------------------------------------
--- [ SINGLE PAGE TAB ]
+-- [ MAIN FARM TAB ]
 -------------------------------------------------------
 local MainTab = Window:CreateTab("Main Farm", 4483362458)
 
--- หัวข้อที่ 1: ฟาร์มวิญญาณ
-MainTab:CreateSection("👻 Soul Farm System")
+MainTab:CreateSection("Boss Farm System")
 
 MainTab:CreateToggle({
-   Name = "Auto Farm Spirit",
+   Name = "Auto Farm Boss (Malphas)",
+   CurrentValue = false,
+   Flag = "BossToggle",
+   Callback = function(Value)
+      _G.AutoBoss = Value
+   end,
+})
+
+MainTab:CreateSection("Soul Farm System")
+
+MainTab:CreateToggle({
+   Name = "Auto Farm Spirit 👻",
    CurrentValue = false,
    Flag = "SoulToggle",
    Callback = function(Value)
@@ -51,18 +85,18 @@ MainTab:CreateToggle({
 })
 
 MainTab:CreateButton({
-   Name = "🌲 TP to Forest to Use Auto Farm Spirit",
+   Name = "TP to Forest",
    Callback = function()
       local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
       if root then
-          root.CFrame = CFrame.new(957.475037, 45.4387665, 494.011627, 1, 0, 0, 0, 1, 0, 0, 0, 1)
+          root.Velocity = Vector3.new(0,0,0)
+          root.CFrame = CFrame.new(957.475037, 48.0, 494.011627)
           Rayfield:Notify({Title = "Teleport", Content = "Teleported to Forest!", Duration = 3})
       end
    end,
 })
 
--- หัวข้อที่ 2: ขุดแร่
-MainTab:CreateSection("⛏️ Mining System")
+MainTab:CreateSection("Mining System ⛏️")
 
 MainTab:CreateToggle({
    Name = "Auto Farm Ore",
@@ -71,48 +105,77 @@ MainTab:CreateToggle({
    Callback = function(Value)
       _G.AutoMine = Value
       if not Value then
-         MineBlacklist = {}
+          MineBlacklist = {}
       end
    end,
 })
 
 MainTab:CreateButton({
-   Name = "📍 TP to Mining Zone to Use Auto Farm Ore",
+   Name = "Tp to Cavern",
    Callback = function()
       local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
       if root then
-          root.CFrame = CFrame.new(1225.1167, 229.666229, -1339.41138, 0, 0, -1, 0, 1, 0, 1, 0, 0)
-          Rayfield:Notify({Title = "Teleport", Content = "Teleported to Mining Zone!", Duration = 3})
+          root.Velocity = Vector3.new(0,0,0)
+          root.CFrame = CFrame.new(1225.1167, 229.666229, -1332.55298, -0.209189296, 0, -0.977875292, 0, 1, 0, 0.977875292, 0, -0.209189296)
+          Rayfield:Notify({Title = "Teleport", Content = "Teleported to Cavern!", Duration = 3})
       end
    end,
 })
 
--- หัวข้อที่ 3: ระบบตั้งค่าอื่นๆ
-MainTab:CreateSection("⚙️ Misc Settings")
+-------------------------------------------------------
+-- [ TELEPORT TAB ]
+-------------------------------------------------------
+local TeleportTab = Window:CreateTab("Teleport", 4483362458)
 
-MainTab:CreateToggle({
+TeleportTab:CreateSection("📍Tp to Boss")
+
+TeleportTab:CreateButton({
+   Name = "Boss Location 1",
+   Callback = function()
+      local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+      if root then
+          root.Velocity = Vector3.new(0,0,0)
+          root.CFrame = CFrame.new(39.6044769, 146.0, -1304.91309)
+          Rayfield:Notify({Title = "Teleport", Content = "TP Boss 1: Safe Height Applied", Duration = 3})
+      end
+   end,
+})
+
+TeleportTab:CreateButton({
+   Name = "Boss Location 2",
+   Callback = function()
+      local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+      if root then
+          root.Velocity = Vector3.new(0,0,0)
+          root.CFrame = CFrame.new(-306.524597, 155.0, 994.546631)
+          Rayfield:Notify({Title = "Teleport", Content = "TP Boss 2: Safe Height Applied", Duration = 3})
+      end
+   end,
+})
+
+-------------------------------------------------------
+-- [ MISC TAB ]
+-------------------------------------------------------
+local MiscTab = Window:CreateTab("Misc", 4483362458)
+
+MiscTab:CreateSection("Misc Settings")
+
+local AntiAFK_Toggle = MiscTab:CreateToggle({
    Name = "Anti AFK",
-   CurrentValue = false,
-   Flag = "AntiAFK",
+   CurrentValue = true, 
+   Flag = "AntiAFK_Flag",
    Callback = function(Value)
       _G.AntiAFK = Value
    end,
 })
 
+-- บังคับให้ UI แสดงสถานะ "เปิด" (On) ทันทีที่รัน
+AntiAFK_Toggle:Set(true)
+
 -------------------------------------------------------
 -- [ LOGIC SECTION ]
 -------------------------------------------------------
 
--- ระบบ Anti AFK Logic
-lp.Idled:Connect(function()
-    if _G.AntiAFK then
-        local VirtualUser = game:GetService("VirtualUser")
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-    end
-end)
-
--- ฟังก์ชันเช็คตัวละคร
 local function getReady()
     local c = lp.Character or lp.CharacterAdded:Wait()
     local r = c:WaitForChild("HumanoidRootPart", 10)
@@ -120,132 +183,126 @@ local function getReady()
     return r, h
 end
 
--- ลูปฟาร์มวิญญาณ + ระบบ Auto Re-TP 10 วินาที
+-- Boss Farm Logic
 task.spawn(function()
-    local lastFoundTime = tick() -- เริ่มนับเวลา
+    while true do
+        task.wait(0.1)
+        if _G.AutoBoss then
+            pcall(function()
+                local root, hum = getReady()
+                local boss = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Malphas")
+                local bossRoot = boss and boss:FindFirstChild("HumanoidRootPart")
+                local bossHum = boss and boss:FindFirstChild("Humanoid")
 
+                if bossRoot and bossHum and bossHum.Health > 0 then
+                    root.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 4)
+                    local args = {[1] = "NormalFist",[2] = 1,[3] = "NormalHit",[4] = bossRoot}
+                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("KatanaCombat"):FireServer(unpack(args))
+                    task.wait(0.4)
+                end
+            end)
+        end
+    end
+end)
+
+-- ลูปฟาร์มวิญญาณ
+task.spawn(function()
+    local lastFoundTime = tick()
     while true do
         task.wait() 
         if _G.AutoFarm then
             pcall(function()
                 local root, hum = getReady()
                 if not root or not hum or hum.Health <= 0 then return end
-
                 local foundTarget = false
-
                 for _, v in pairs(game.Workspace:GetDescendants()) do
                     if not _G.AutoFarm or hum.Health <= 0 then break end
                     if v:IsA("ProximityPrompt") and v.Enabled then
                         local pObj = v.Parent
                         if not pObj or IgnoreList[v] then continue end
-                        local act = v.ActionText or ""
-                        local objT = v.ObjectText or ""
-                        
-                        if string.find(act, "Purify") or string.find(act, "ชำระ") or string.find(objT, "วิญญาณ") then
+                        if string.find(v.ActionText or "", "Purify") or string.find(v.ObjectText or "", "วิญญาณ") then
                             foundTarget = true
-                            lastFoundTime = tick() -- เจอแล้ว รีเซ็ตเวลา
-                            
+                            lastFoundTime = tick()
                             local pos = pObj:IsA("BasePart") and pObj.Position or (pObj:IsA("Attachment") and pObj.WorldPosition)
                             if pos then
                                 IgnoreList[v] = true
-                                root.CFrame = CFrame.new(pos + Vector3.new(0, 2.5, 0))
+                                root.CFrame = CFrame.new(pos + Vector3.new(0, 3.0, 0))
                                 task.wait(0.05)
                                 fireproximityprompt(v)
-                                
                                 local t = tick()
                                 repeat
                                     fireproximityprompt(v)
                                     task.wait()
                                 until not v.Parent or (tick() - t) > (v.HoldDuration + 0.15) or not _G.AutoFarm
-                                
                                 task.delay(2, function() IgnoreList[v] = nil end)
                                 break 
                             end
                         end
                     end
                 end
-
-                -- ถ้าหาไม่เจอวิญญาณนานเกิน 10 วินาที
                 if not foundTarget and (tick() - lastFoundTime) > 10 then
-                    root.CFrame = CFrame.new(957.475037, 45.4387665, 494.011627, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- วาร์ปไปพิกัดป่า
-                    Rayfield:Notify({
-                        Title = "Auto-Recovery", 
-                        Content = "Soul not found for 10s. Teleporting to Forest...", 
-                        Duration = 3
-                    })
-                    lastFoundTime = tick() -- รีเซ็ตเวลาหลังวาร์ป
+                    root.CFrame = CFrame.new(957.475037, 48.0, 494.011627)
+                    lastFoundTime = tick()
                 end
             end)
         else
-            lastFoundTime = tick() -- ถ้าปิดฟาร์ม ให้รีเซ็ตเวลาไว้เสมอ
+            lastFoundTime = tick()
         end
     end
 end)
 
 -- ลูปขุดแร่
-local remotes = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5) and game:GetService("ReplicatedStorage").Remotes:WaitForChild("Mining", 5)
-
-local function canMine(ore)
-    if ore and ore.Parent == workspace and not MineBlacklist[ore] then
-        if ore:FindFirstChildWhichIsA("BasePart") or ore:FindFirstChildWhichIsA("MeshPart") then
-            return true
-        end
-    end
-    return false
-end
-
-local function getClosestOre()
-    local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-    if not root then return nil end
-    local closest, dist = nil, math.huge
-    for _, v in pairs(workspace:GetChildren()) do
-        if (v.Name:lower():find("ore")) and v:IsA("Model") and canMine(v) then
-            local p = v:GetModelCFrame().Position
-            local d = (root.Position - p).Magnitude
-            if d < dist then
-                closest = v
-                dist = d
-            end
-        end
-    end
-    return closest
-end
-
 task.spawn(function()
+    local mineRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5) and game:GetService("ReplicatedStorage").Remotes:WaitForChild("Mining", 5)
+    local lastMineFoundTime = tick()
+    local mineResetPos = CFrame.new(1225.1167, 229.666229, -1332.55298, -0.209189296, 0, -0.977875292, 0, 1, 0, 0.977875292, 0, -0.209189296)
+
     while true do
         task.wait()
         if _G.AutoMine then
             local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
-            local target = getClosestOre()
-            
-            if target and root then
-                pcall(function()
-                    root.CFrame = target:GetModelCFrame() * CFrame.new(0, 2, 4)
-                end)
-                task.wait(0.1)
+            if root then
+                local target = nil
+                local dist = math.huge
                 
-                local startTime = tick()
-                while _G.AutoMine and target.Parent == workspace and (tick() - startTime < 10) do
-                    if remotes then remotes:FireServer(target, "Mining") end
-                    root.Velocity = Vector3.new(0,0,0)
-                    task.wait(0.05)
-                    if not target:FindFirstChildWhichIsA("BasePart") and not target:FindFirstChildWhichIsA("MeshPart") then
-                        break
+                for _, v in pairs(workspace:GetChildren()) do
+                    if v.Name:lower():find("ore") and v:IsA("Model") and not MineBlacklist[v] then
+                        local p = v:GetModelCFrame().Position
+                        local d = (root.Position - p).Magnitude
+                        if d < dist then target = v dist = d end
                     end
                 end
-                MineBlacklist[target] = true
-            else
-                if next(MineBlacklist) ~= nil then
-                    MineBlacklist = {}
+                
+                if target then
+                    lastMineFoundTime = tick()
+                    pcall(function() root.CFrame = target:GetModelCFrame() * CFrame.new(0, 3, 4) end)
+                    task.wait(0.1)
+                    local startTime = tick()
+                    while _G.AutoMine and target.Parent == workspace and (tick() - startTime < 10) do
+                        if mineRemote then mineRemote:FireServer(target, "Mining") end
+                        root.Velocity = Vector3.new(0,0,0)
+                        task.wait(0.05)
+                    end
+                    MineBlacklist[target] = true
+                else
+                    if (tick() - lastMineFoundTime) > 10 then
+                        root.CFrame = mineResetPos
+                        Rayfield:Notify({Title = "Mining System", Content = "Auto-Returning to Cavern...", Duration = 3})
+                        MineBlacklist = {}
+                        lastMineFoundTime = tick()
+                        task.wait(2)
+                    end
+                    task.wait(0.5)
                 end
-                task.wait(1)
             end
+        else
+            lastMineFoundTime = tick()
         end
     end
 end)
 
 Rayfield:Notify({
-   Title = "FMZ HUB Ready!",
-   Content = "Auto-Fix (10s) Enabled | Press P to Toggle UI",
+   Title = "FMZ HUB Loaded!",
+   Content = "Anti AFK is now ON",
    Duration = 5,
 })
