@@ -16,16 +16,21 @@ local Window = Rayfield:CreateWindow({
 _G.AutoFarm = false
 _G.AutoMine = false
 _G.AutoBoss = false
-_G.AntiAFK = true -- บังคับค่าตัวแปรเป็น true ไว้ก่อน
+_G.AntiAFK = true
+-- ตัวแปรควบคุมสกิล
+_G.SkillZ = true
+_G.SkillX = true
+_G.SkillT = true
+_G.SkillV = true
 
 local lp = game.Players.LocalPlayer
 local IgnoreList = {} 
 local MineBlacklist = {} 
+local VirtualInputManager = game:GetService("VirtualInputManager")
 
 -------------------------------------------------------
 -- [ SYSTEM: FORCE ANTI AFK ]
 -------------------------------------------------------
--- ระบบป้องกันการถูกเตะออก (ทำงานเบื้องหลังทันที)
 task.spawn(function()
     local vu = game:GetService("VirtualUser")
     game:GetService("Players").LocalPlayer.Idled:Connect(function()
@@ -35,24 +40,10 @@ task.spawn(function()
             vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
         end
     end)
-    -- ป้องกันแบบสำรอง (ขยับตัวเล็กน้อยทุก 2 นาที)
     while task.wait(120) do
         if _G.AntiAFK then
             vu:CaptureController()
             vu:ClickButton2(Vector2.new())
-        end
-    end
-end)
-
--------------------------------------------------------
--- [ SYSTEM: TOGGLE UI WITH KEYBOARD ]
--------------------------------------------------------
-local UserInputService = game:GetService("UserInputService")
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if not gameProcessed and input.KeyCode == Enum.KeyCode.P then
-        local gui = game:GetService("CoreGui"):FindFirstChild("Rayfield")
-        if gui then
-            gui.Enabled = not gui.Enabled
         end
     end
 end)
@@ -73,10 +64,10 @@ MainTab:CreateToggle({
    end,
 })
 
-MainTab:CreateSection("Soul Farm System")
+MainTab:CreateSection("Soul Farm System 👻")
 
 MainTab:CreateToggle({
-   Name = "Auto Farm Spirit 👻",
+   Name = "Auto Farm Spirit",
    CurrentValue = false,
    Flag = "SoulToggle",
    Callback = function(Value)
@@ -116,8 +107,9 @@ MainTab:CreateButton({
       local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
       if root then
           root.Velocity = Vector3.new(0,0,0)
-          root.CFrame = CFrame.new(1225.1167, 229.666229, -1332.55298, -0.209189296, 0, -0.977875292, 0, 1, 0, 0.977875292, 0, -0.209189296)
-          Rayfield:Notify({Title = "Teleport", Content = "Teleported to Cavern!", Duration = 3})
+          -- ปรับความสูงจาก 229 เป็น 235 เพื่อกันจมดิน
+          root.CFrame = CFrame.new(1225.1167, 235.0, -1332.55298)
+          Rayfield:Notify({Title = "Teleport", Content = "Teleported to Cavern (Safe Height)!", Duration = 3})
       end
    end,
 })
@@ -136,7 +128,6 @@ TeleportTab:CreateButton({
       if root then
           root.Velocity = Vector3.new(0,0,0)
           root.CFrame = CFrame.new(39.6044769, 146.0, -1304.91309)
-          Rayfield:Notify({Title = "Teleport", Content = "TP Boss 1: Safe Height Applied", Duration = 3})
       end
    end,
 })
@@ -148,7 +139,6 @@ TeleportTab:CreateButton({
       if root then
           root.Velocity = Vector3.new(0,0,0)
           root.CFrame = CFrame.new(-306.524597, 155.0, 994.546631)
-          Rayfield:Notify({Title = "Teleport", Content = "TP Boss 2: Safe Height Applied", Duration = 3})
       end
    end,
 })
@@ -157,6 +147,36 @@ TeleportTab:CreateButton({
 -- [ MISC TAB ]
 -------------------------------------------------------
 local MiscTab = Window:CreateTab("Misc", 4483362458)
+
+MiscTab:CreateSection("Auto Skill Settings")
+
+MiscTab:CreateToggle({
+   Name = "Use Skill Z",
+   CurrentValue = true,
+   Flag = "Skill_Z",
+   Callback = function(Value) _G.SkillZ = Value end,
+})
+
+MiscTab:CreateToggle({
+   Name = "Use Skill X",
+   CurrentValue = true,
+   Flag = "Skill_X",
+   Callback = function(Value) _G.SkillX = Value end,
+})
+
+MiscTab:CreateToggle({
+   Name = "Use Skill T",
+   CurrentValue = true,
+   Flag = "Skill_T",
+   Callback = function(Value) _G.SkillT = Value end,
+})
+
+MiscTab:CreateToggle({
+   Name = "Use Skill V",
+   CurrentValue = true,
+   Flag = "Skill_V",
+   Callback = function(Value) _G.SkillV = Value end,
+})
 
 MiscTab:CreateSection("Misc Settings")
 
@@ -168,9 +188,6 @@ local AntiAFK_Toggle = MiscTab:CreateToggle({
       _G.AntiAFK = Value
    end,
 })
-
--- บังคับให้ UI แสดงสถานะ "เปิด" (On) ทันทีที่รัน
-AntiAFK_Toggle:Set(true)
 
 -------------------------------------------------------
 -- [ LOGIC SECTION ]
@@ -185,8 +202,9 @@ end
 
 -- Boss Farm Logic
 task.spawn(function()
+    local bv, bg
     while true do
-        task.wait(0.1)
+        task.wait()
         if _G.AutoBoss then
             pcall(function()
                 local root, hum = getReady()
@@ -195,17 +213,57 @@ task.spawn(function()
                 local bossHum = boss and boss:FindFirstChild("Humanoid")
 
                 if bossRoot and bossHum and bossHum.Health > 0 then
-                    root.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 4)
+                    if not root:FindFirstChild("FmzStabilizerV") then
+                        bv = Instance.new("BodyVelocity", root)
+                        bv.Name = "FmzStabilizerV"
+                        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+                        bv.Velocity = Vector3.new(0, 0, 0)
+                    end
+                    if not root:FindFirstChild("FmzStabilizerG") then
+                        bg = Instance.new("BodyGyro", root)
+                        bg.Name = "FmzStabilizerG"
+                        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+                        bg.P = 30000
+                    end
+                    
+                    root.CFrame = bossRoot.CFrame * CFrame.new(0, 0, 3.5)
+                    bg.CFrame = bossRoot.CFrame
+
+                    local skillKeys = {
+                        {Key = Enum.KeyCode.Z, Enabled = _G.SkillZ},
+                        {Key = Enum.KeyCode.X, Enabled = _G.SkillX},
+                        {Key = Enum.KeyCode.T, Enabled = _G.SkillT},
+                        {Key = Enum.KeyCode.V, Enabled = _G.SkillV}
+                    }
+
+                    for _, skill in pairs(skillKeys) do
+                        if skill.Enabled then
+                            VirtualInputManager:SendKeyEvent(true, skill.Key, false, game)
+                            task.wait(0.01)
+                            VirtualInputManager:SendKeyEvent(false, skill.Key, false, game)
+                        end
+                    end
+
                     local args = {[1] = "NormalFist",[2] = 1,[3] = "NormalHit",[4] = bossRoot}
                     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("KatanaCombat"):FireServer(unpack(args))
-                    task.wait(0.4)
+                    task.wait(0.05)
+                else
+                    if root:FindFirstChild("FmzStabilizerV") then root.FmzStabilizerV:Destroy() end
+                    if root:FindFirstChild("FmzStabilizerG") then root.FmzStabilizerG:Destroy() end
                 end
             end)
+        else
+            local root = lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                if root:FindFirstChild("FmzStabilizerV") then root.FmzStabilizerV:Destroy() end
+                if root:FindFirstChild("FmzStabilizerG") then root.FmzStabilizerG:Destroy() end
+            end
+            task.wait(1)
         end
     end
 end)
 
--- ลูปฟาร์มวิญญาณ
+-- Soul Farm Loop
 task.spawn(function()
     local lastFoundTime = tick()
     while true do
@@ -218,25 +276,15 @@ task.spawn(function()
                 for _, v in pairs(game.Workspace:GetDescendants()) do
                     if not _G.AutoFarm or hum.Health <= 0 then break end
                     if v:IsA("ProximityPrompt") and v.Enabled then
-                        local pObj = v.Parent
-                        if not pObj or IgnoreList[v] then continue end
                         if string.find(v.ActionText or "", "Purify") or string.find(v.ObjectText or "", "วิญญาณ") then
                             foundTarget = true
                             lastFoundTime = tick()
-                            local pos = pObj:IsA("BasePart") and pObj.Position or (pObj:IsA("Attachment") and pObj.WorldPosition)
-                            if pos then
-                                IgnoreList[v] = true
-                                root.CFrame = CFrame.new(pos + Vector3.new(0, 3.0, 0))
-                                task.wait(0.05)
-                                fireproximityprompt(v)
-                                local t = tick()
-                                repeat
-                                    fireproximityprompt(v)
-                                    task.wait()
-                                until not v.Parent or (tick() - t) > (v.HoldDuration + 0.15) or not _G.AutoFarm
-                                task.delay(2, function() IgnoreList[v] = nil end)
-                                break 
-                            end
+                            local pos = v.Parent:IsA("BasePart") and v.Parent.Position or v.Parent.WorldPosition
+                            root.CFrame = CFrame.new(pos + Vector3.new(0, 3.0, 0))
+                            task.wait(0.05)
+                            fireproximityprompt(v)
+                            task.wait(v.HoldDuration + 0.1)
+                            break 
                         end
                     end
                 end
@@ -245,18 +293,14 @@ task.spawn(function()
                     lastFoundTime = tick()
                 end
             end)
-        else
-            lastFoundTime = tick()
         end
     end
 end)
 
--- ลูปขุดแร่
+-- Mining Farm Loop
 task.spawn(function()
     local mineRemote = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5) and game:GetService("ReplicatedStorage").Remotes:WaitForChild("Mining", 5)
     local lastMineFoundTime = tick()
-    local mineResetPos = CFrame.new(1225.1167, 229.666229, -1332.55298, -0.209189296, 0, -0.977875292, 0, 1, 0, 0.977875292, 0, -0.209189296)
-
     while true do
         task.wait()
         if _G.AutoMine then
@@ -264,7 +308,6 @@ task.spawn(function()
             if root then
                 local target = nil
                 local dist = math.huge
-                
                 for _, v in pairs(workspace:GetChildren()) do
                     if v.Name:lower():find("ore") and v:IsA("Model") and not MineBlacklist[v] then
                         local p = v:GetModelCFrame().Position
@@ -272,37 +315,30 @@ task.spawn(function()
                         if d < dist then target = v dist = d end
                     end
                 end
-                
                 if target then
                     lastMineFoundTime = tick()
                     pcall(function() root.CFrame = target:GetModelCFrame() * CFrame.new(0, 3, 4) end)
-                    task.wait(0.1)
+                    task.wait(0.2)
                     local startTime = tick()
                     while _G.AutoMine and target.Parent == workspace and (tick() - startTime < 10) do
                         if mineRemote then mineRemote:FireServer(target, "Mining") end
-                        root.Velocity = Vector3.new(0,0,0)
                         task.wait(0.05)
                     end
                     MineBlacklist[target] = true
                 else
                     if (tick() - lastMineFoundTime) > 10 then
-                        root.CFrame = mineResetPos
-                        Rayfield:Notify({Title = "Mining System", Content = "Auto-Returning to Cavern...", Duration = 3})
+                        root.CFrame = CFrame.new(1225.1167, 235.0, -1332.55298)
                         MineBlacklist = {}
                         lastMineFoundTime = tick()
-                        task.wait(2)
                     end
-                    task.wait(0.5)
                 end
             end
-        else
-            lastMineFoundTime = tick()
         end
     end
 end)
 
 Rayfield:Notify({
    Title = "FMZ HUB Loaded!",
-   Content = "Anti AFK is now ON",
+   Content = "TP Cavern Fixed (Anti-Grounding)",
    Duration = 5,
 })
