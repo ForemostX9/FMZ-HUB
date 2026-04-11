@@ -50,7 +50,6 @@ MainTab:CreateToggle({
    end,
 })
 
--- วางไว้ใต้ปุ่ม Auto Spirit ตามคำขอครับ
 MainTab:CreateButton({
    Name = "🌲 TP to Forest to Use Auto Farm Spirit",
    Callback = function()
@@ -121,14 +120,18 @@ local function getReady()
     return r, h
 end
 
--- ลูปฟาร์มวิญญาณ
+-- ลูปฟาร์มวิญญาณ + ระบบ Auto Re-TP 10 วินาที
 task.spawn(function()
+    local lastFoundTime = tick() -- เริ่มนับเวลา
+
     while true do
         task.wait() 
         if _G.AutoFarm then
             pcall(function()
                 local root, hum = getReady()
                 if not root or not hum or hum.Health <= 0 then return end
+
+                local foundTarget = false
 
                 for _, v in pairs(game.Workspace:GetDescendants()) do
                     if not _G.AutoFarm or hum.Health <= 0 then break end
@@ -139,6 +142,9 @@ task.spawn(function()
                         local objT = v.ObjectText or ""
                         
                         if string.find(act, "Purify") or string.find(act, "ชำระ") or string.find(objT, "วิญญาณ") then
+                            foundTarget = true
+                            lastFoundTime = tick() -- เจอแล้ว รีเซ็ตเวลา
+                            
                             local pos = pObj:IsA("BasePart") and pObj.Position or (pObj:IsA("Attachment") and pObj.WorldPosition)
                             if pos then
                                 IgnoreList[v] = true
@@ -158,7 +164,20 @@ task.spawn(function()
                         end
                     end
                 end
+
+                -- ถ้าหาไม่เจอวิญญาณนานเกิน 10 วินาที
+                if not foundTarget and (tick() - lastFoundTime) > 10 then
+                    root.CFrame = CFrame.new(957.475037, 45.4387665, 494.011627, 1, 0, 0, 0, 1, 0, 0, 0, 1) -- วาร์ปไปพิกัดป่า
+                    Rayfield:Notify({
+                        Title = "Auto-Recovery", 
+                        Content = "Soul not found for 10s. Teleporting to Forest...", 
+                        Duration = 3
+                    })
+                    lastFoundTime = tick() -- รีเซ็ตเวลาหลังวาร์ป
+                end
             end)
+        else
+            lastFoundTime = tick() -- ถ้าปิดฟาร์ม ให้รีเซ็ตเวลาไว้เสมอ
         end
     end
 end)
@@ -227,6 +246,6 @@ end)
 
 Rayfield:Notify({
    Title = "FMZ HUB Ready!",
-   Content = "Forest TP placed under Auto Spirit | Press P to Toggle UI",
+   Content = "Auto-Fix (10s) Enabled | Press P to Toggle UI",
    Duration = 5,
 })
